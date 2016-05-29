@@ -40,9 +40,11 @@ d.op_success
 d.version
 #=> 1
 ```
-#### Create with an optional query
-Suppose you want to create a new user provided that there is no document in the database with the confirmation token 
-"test_token"
+#### Create with an optional query(CREATE WHERE)
+This method should be used with queries with caution, since it will overwrite a matching record with all the attributes of the current instance.
+
+Suppose you want to create a document ONLY IF there is no document with the confirmation token of the current instance.
+We can do this atomically by providing the following "$ne" query.
 
 ```
 d = User.new
@@ -82,8 +84,21 @@ It will fail if the document version is less than 1.
 
 ### Atomic Query and Update.
 This is a class method. So it will not run callbacks, validations etc.
+It sets upsert by default to true.
+If the required record is not found, a new one will be created, if found, then the said record will be updated with the 
+conditions in the update hash.
+The third parameter can be set to true/false to decide whether upsert should be true or false.
+```
+User.versioned_upsert(
+{"confirmation_token" => "abcd"},
+{"$set" => {"name" => "already_exists"},
+ "$setOnInsert" => {"name" => "new_name"}
+},
+true
+)
+```
+This method allows you to decide what gets set if the record is new, or already exists.
+Since you can provide a update hash.
 
 
-
-    
   
