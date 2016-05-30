@@ -6,7 +6,55 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end
 
+  ########################
+  ##
+  ###FINGERPRINT TESTS.
+  ##
+  ########################
+  
+  def test_default_fingerprint_is_nil
 
+  end
+
+  def test_versioned_create_query_contains_fingerprint_equal_to_field_length_of_zeros
+  end
+
+  def test_versioned_create_updated_fingerprint_contains_only_persisted_fields_as_ones
+  end
+
+  def test_versioned_create_hundred_runs_generates_same_fingerprint
+
+  end
+
+  def test_versioned_update_works_with_current_fingerprint
+
+  end
+
+  def test_versioned_update_fails_with_different_fingerprint
+
+  end
+
+  def test_versioned_update_fails_with_no_fingerprint
+
+  end
+
+  def test_versioned_update_with_new_fields_generates_longer_query_fingerprint_and_fails
+
+  end
+
+  def test_updating_only_some_fields_keeps_the_state_of_other_fields_in_the_fingerprint
+
+  end
+
+  #############################
+  ##
+  ## FINGERPRINT TESTS END.
+  ##
+  ##############################
+
+
+
+=begin
   def test_versioned_create
   	u = User.new
   	u.name = "bhargav"
@@ -244,6 +292,6 @@ class CoreExtTest < ActiveSupport::TestCase
     a.versioned_create
 
   end
-
+=end
 
 end

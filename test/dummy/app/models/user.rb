@@ -11,6 +11,7 @@ class User
 
   field :name, type: String
   field :email, type: String
+  field :dummy, type: String
   field :before_create_field, type: Integer, default: 0
   field :after_create_field, type: Integer, default: 0
   field :before_update_field, type: Integer, default: 0

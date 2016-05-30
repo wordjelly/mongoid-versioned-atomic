@@ -6,6 +6,9 @@ module MongoidVersionedAtomic
 	    included do
 	    	field :version, type: Integer, default: 0
 	    	field :op_success, type: Boolean
+	    	##this carries each of the fields are being created or updated.
+	    	##it goes alphabetically and stores a 1 if the field is set or a zero if the field is blank.
+	    	field :field_fingerprint, type: String
 	    	before_save :filter_fields
 	    end
 
@@ -33,7 +36,56 @@ module MongoidVersionedAtomic
 
 	    	end
 
-	    	def before_persist(options,update)
+	    	##@param options[Hash] -> the options hash for the find_one_and_update method
+	    	#@param update[Hash] -> the update hash for the find_one_and_update method
+	    	#@param doc_hash[Hash] -> the document as a hash
+	    	def before_persist(options,update,doc_hash,self,query)
+
+
+
+	    		if update["$set"].nil?
+	    			update["$set"] = {}
+	    		elsif update["$setOnInsert"].nil?
+	    			update["$setOnInsert"] = {}
+	    		end
+
+	    		##now its time to iterate the keys of the class fields
+	    		k_fields = self.class.fields.keys
+	    		k_fields.sort_by!{|c| c.downcase}
+	    		##if the current fingerprint is nil, then we make it zero for all the fields on the document.
+	    		current_fingerprint = doc_hash["field_fingerprint"].nil? ? k_fields.map!{|c| c = "0"}.join("") : doc_hash["field_fingerprint"]
+
+	    		updated_fingerprint = ""
+
+	    		k_fields.each_with_index {|fl,i|
+	    			
+    				##if this index is greater than the length of the current fingerprint, otherwise 
+    				if i >= (current_fingerprint.length)
+    					if doc_hash[fl].nil?
+    						current_fingerprint+="0"
+    						updated_fingerprint+="0"
+    					else
+    						current_fingerprint+="1"
+    						updated_fingerprint+="1"
+    					end
+    				else
+    					if doc_hash[fl].nil?
+    						updated_fingerprint[i] = current_fingerprint[i]
+    					else
+    						updated_fingerprint[i] = "1"
+    					end
+    				end
+	    			
+	    		}
+
+	    		##now time to update the current fingerprint, if its length is less than the k_fields length
+	    		
+	    		query["field_fingerprint"] = current_fingerprint
+	    		options["$set"]["field_fingerprint"] = updated_fingerprint
+	    		options["$setOnInsert"]["field_fingerprint"] = updated_fingerprint
+
+
+	    		##this has to be merged with the current fingerprint, to build the updated fingerprint.
 
 	    		options[:return_document] = :after
 
@@ -44,7 +96,7 @@ module MongoidVersionedAtomic
 					update["$inc"]["version"] = 1
 				end
 
-				return options,update
+				return options,update,query
 
 	    	end
 
@@ -144,21 +196,26 @@ module MongoidVersionedAtomic
 			 				end
 			 			end
 
-						options,update = self.class.before_persist(options,update)
+						options,update,query = self.class.before_persist(options,update,as_document,self,query)
 
-						self.class.log_opts(query,update,options,"create")
-					
-						persisted_doc = collection.find_one_and_update(query,update,options)
-	
-						if persisted_doc.nil?
-							self.send("op_success=",false)
+						if query=~/[^0]/
+							##the current fingerprint cannot be anything except zeros since we are persisting the document brand new.
 						else
-							if persisted_doc["version"] == expected_version
-								self.send("op_success=",true)
-							end	
+							self.class.log_opts(query,update,options,"create")
 						
-							self.class.after_persist(persisted_doc,self)
-						end	
+							persisted_doc = collection.find_one_and_update(query,update,options)
+		
+							if persisted_doc.nil?
+								self.send("op_success=",false)
+							else
+								if persisted_doc["version"] == expected_version
+									self.send("op_success=",true)
+								end	
+							
+								self.class.after_persist(persisted_doc,self)
+							end	
+						end
+
 						
 					end
 
@@ -223,8 +280,9 @@ module MongoidVersionedAtomic
 						end
 					end
 
-					options,update = self.class.before_persist(options,update)
+					options,update,query = self.class.before_persist(options,update,curr_doc,self,query)
 					
+
 					self.class.log_opts(query,update,options,"update")
 
 					persisted_doc = collection.find_one_and_update(query,update,options)
