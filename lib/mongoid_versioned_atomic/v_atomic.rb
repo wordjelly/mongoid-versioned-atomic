@@ -6,9 +6,6 @@ module MongoidVersionedAtomic
 	    included do
 	    	field :version, type: Integer, default: 0
 	    	field :op_success, type: Boolean
-	    	##this carries each of the fields are being created or updated.
-	    	##it goes alphabetically and stores a 1 if the field is set or a zero if the field is blank.
-	    	field :field_fingerprint, type: String
 	    	before_save :filter_fields
 	    end
 
