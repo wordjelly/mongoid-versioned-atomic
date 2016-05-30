@@ -135,7 +135,8 @@ module MongoidVersionedAtomic
 		 		update = {}
 		 		options = {}
 		 		id_query = {"_id" => as_document["_id"]}
-		 		query = query.merge(id_query)
+		 	
+		 		query = query.empty? ? id_query : query
 
 
 				if version == 0
@@ -168,8 +169,6 @@ module MongoidVersionedAtomic
 							
 								self.class.after_persist(persisted_doc,self)
 							end	
-						
-
 						
 					end
 

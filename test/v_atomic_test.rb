@@ -6,6 +6,28 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_query_in_create
+
+    u = User.new
+    u.name = "bhargav"
+    u.email = "u@gmail.com"
+    u.versioned_create
+
+    u1 = User.new
+    u1.name = "aditya"
+    u1.email = "s@gmail.com"
+    u1.versioned_create({"$or" =>
+     [
+      {"_id" => u1.id},
+      {"name" => "bhargav"}
+     ]
+   })
+
+    assert_equal 1, User.count, "the user count should be one"
+
+  end
+
+
   def test_create_two_users
 
     u = User.new 
@@ -325,8 +347,5 @@ class CoreExtTest < ActiveSupport::TestCase
 
 
   end
-
-
-
 
 end
