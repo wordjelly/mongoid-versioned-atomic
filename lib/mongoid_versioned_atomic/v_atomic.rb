@@ -38,52 +38,6 @@ module MongoidVersionedAtomic
 	    	#@param doc_hash[Hash] -> the document as a hash
 	    	def before_persist(options,update,bypass_versioning=false)
 
-
-=begin
-	    		if update["$set"].nil?
-	    			update["$set"] = {}
-	    		elsif update["$setOnInsert"].nil?
-	    			update["$setOnInsert"] = {}
-	    		end
-
-	    		##now its time to iterate the keys of the class fields
-	    		k_fields = self.class.fields.keys
-	    		k_fields.sort_by!{|c| c.downcase}
-	    		##if the current fingerprint is nil, then we make it zero for all the fields on the document.
-	    		current_fingerprint = doc_hash["field_fingerprint"].nil? ? k_fields.map!{|c| c = "0"}.join("") : doc_hash["field_fingerprint"]
-
-	    		updated_fingerprint = ""
-
-	    		k_fields.each_with_index {|fl,i|
-	    			
-    				##if this index is greater than the length of the current fingerprint, otherwise 
-    				if i >= (current_fingerprint.length)
-    					if doc_hash[fl].nil?
-    						current_fingerprint+="0"
-    						updated_fingerprint+="0"
-    					else
-    						current_fingerprint+="1"
-    						updated_fingerprint+="1"
-    					end
-    				else
-    					if doc_hash[fl].nil?
-    						updated_fingerprint[i] = current_fingerprint[i]
-    					else
-    						updated_fingerprint[i] = "1"
-    					end
-    				end
-	    			
-	    		}
-
-	    		##now time to update the current fingerprint, if its length is less than the k_fields length
-	    		
-	    		query["field_fingerprint"] = current_fingerprint
-	    		options["$set"]["field_fingerprint"] = updated_fingerprint
-	    		options["$setOnInsert"]["field_fingerprint"] = updated_fingerprint
-
-
-	    		##this has to be merged with the current fingerprint, to build the updated fingerprint.
-=end
 	    		options[:return_document] = :after
 
 	    		if !bypass_versioning
@@ -215,11 +169,10 @@ module MongoidVersionedAtomic
 						
 					end
 
-
 					
 				end	        
 
-				return true  
+				return query,update,options  
 						
 		end
 
@@ -277,9 +230,11 @@ module MongoidVersionedAtomic
 						end
 					end
 
-					options,update = self.class.before_persist(options,update,bypass_versioning)
+					
 						
-					update_hash = update_hash.deep_merge(optional_update_hash)
+					update = optional_update_hash.empty? ? update : optional_update_hash
+
+					options,update = self.class.before_persist(options,update,bypass_versioning)
 
 					self.class.log_opts(query,update,options,"update")
 
@@ -300,7 +255,7 @@ module MongoidVersionedAtomic
 				
 			end
 
-			return true
+			return query,update,options  
 
 		end
 

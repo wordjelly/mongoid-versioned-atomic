@@ -16,6 +16,7 @@ class User
   field :after_create_field, type: Integer, default: 0
   field :before_update_field, type: Integer, default: 0
   field :after_update_field, type: Integer, default: 0
+  field :likes, type: Integer, default: 0
   validates :name, presence:{message: "There should be a user name"}
   validates_format_of :email, :with => /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/i
 

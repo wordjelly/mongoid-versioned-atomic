@@ -246,12 +246,71 @@ class CoreExtTest < ActiveSupport::TestCase
 
   def test_bypass_versioning_on_update
 
+    a = User.new
+    a.email = "bhargav.r.raut@gmail.com"
+    a.name = "bhargav"
+    a.versioned_create
+
+    a.name = "changed"
+    query,update,options = a.versioned_update({},true)
+
+    assert_equal 1 , a.version, "the version should be one."
+    assert_equal "changed", a.name, "the name should have been persisted"
+    assert_equal true, query["version"] == nil, "there should be no version parameter in the query."
+
+    a = User.find(a.id)
+
+    assert_equal 1, a.version, "(db) the version in the db should be one"
+    assert_equal "changed", a.name, "(db) the name in the db should be one."
+
   end
 
 
-  def test_merging_optional_update_hash_on_update
+  def test_passing_optional_update_hash
+
+    a = User.new
+    a.email = "bhargav.r.raut@gmail.com"
+    a.name = "bhargav"
+    a.versioned_create
+
+    query,options,update = a.versioned_update({},false,{"$inc" => {"likes" => 1}, "$set" => {"name" => "changed"}})
+
+    assert_equal 1, a.likes, "the likes should be one."
+    assert_equal "changed",a.name, "the name should be changed"
+    assert_equal 2, a.version, "the document version is 1"
+    
+
+    a = User.find(a.id)
+    assert_equal 1, a.likes, "(db)the likes should be one."
+    assert_equal "changed",a.name, "(db)the name should be changed"
+    assert_equal 2, a.version, "(db)the document version is 1"    
 
   end
+
+  def test_passing_optional_update_hash_and_bypass_versioning
+    
+    a = User.new
+    a.email = "bhargav.r.raut@gmail.com"
+    a.name = "bhargav"
+    a.versioned_create
+
+    query,options,update = a.versioned_update({},true,{"$inc" => {"likes" => 1}, "$set" => {"name" => "changed"}})
+
+    assert_equal 1, a.likes, "the likes should be one."
+    assert_equal "changed",a.name, "the name should be changed"
+    assert_equal 1, a.version, "the document version is 1"
+    assert_equal true, query["version"] == nil, "there should be no version parameter in the query."
+
+    a = User.find(a.id)
+    assert_equal 1, a.likes, "(db)the likes should be one."
+    assert_equal "changed",a.name, "(db)the name should be changed"
+    assert_equal 1, a.version, "(db)the document version is 1"    
+
+
+
+  end
+
+
 
 
 end
