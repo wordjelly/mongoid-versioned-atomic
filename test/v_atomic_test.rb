@@ -307,7 +307,6 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_equal 1, a.version, "(db)the document version is 1"    
 
 
-
   end
 
 
