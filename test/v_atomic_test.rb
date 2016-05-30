@@ -11,7 +11,7 @@ class CoreExtTest < ActiveSupport::TestCase
   ###FINGERPRINT TESTS.
   ##
   ########################
-  
+=begin
   def test_default_fingerprint_is_nil
 
   end
@@ -45,7 +45,7 @@ class CoreExtTest < ActiveSupport::TestCase
   def test_updating_only_some_fields_keeps_the_state_of_other_fields_in_the_fingerprint
 
   end
-
+=end
   #############################
   ##
   ## FINGERPRINT TESTS END.
@@ -54,7 +54,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
 
 
-=begin
+
   def test_versioned_create
   	u = User.new
   	u.name = "bhargav"
@@ -285,13 +285,13 @@ class CoreExtTest < ActiveSupport::TestCase
   def test_image_versioned_create
 
     a = User.new
-    a.image = File.new("/home/bhargav/Github/WJ_Devise_Tauth/test/dummy/app/assets/images/facebook.png")
+    a.image = File.new("/home/bhargav/Github/mongoid_versioned_atomic/test/dummy/app/assets/images/facebook.png")
     a.name = "bhargav"
     a.email = "test@gmail.com"
     
     a.versioned_create
 
   end
-=end
+
 
 end

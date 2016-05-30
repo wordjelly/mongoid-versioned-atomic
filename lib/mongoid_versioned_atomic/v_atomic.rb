@@ -39,10 +39,10 @@ module MongoidVersionedAtomic
 	    	##@param options[Hash] -> the options hash for the find_one_and_update method
 	    	#@param update[Hash] -> the update hash for the find_one_and_update method
 	    	#@param doc_hash[Hash] -> the document as a hash
-	    	def before_persist(options,update,doc_hash,self,query)
+	    	def before_persist(options,update)
 
 
-
+=begin
 	    		if update["$set"].nil?
 	    			update["$set"] = {}
 	    		elsif update["$setOnInsert"].nil?
@@ -86,7 +86,7 @@ module MongoidVersionedAtomic
 
 
 	    		##this has to be merged with the current fingerprint, to build the updated fingerprint.
-
+=end
 	    		options[:return_document] = :after
 
 		 		if update["$inc"].nil?
@@ -96,7 +96,7 @@ module MongoidVersionedAtomic
 					update["$inc"]["version"] = 1
 				end
 
-				return options,update,query
+				return options,update
 
 	    	end
 
@@ -196,11 +196,8 @@ module MongoidVersionedAtomic
 			 				end
 			 			end
 
-						options,update,query = self.class.before_persist(options,update,as_document,self,query)
+						options,update = self.class.before_persist(options,update)
 
-						if query=~/[^0]/
-							##the current fingerprint cannot be anything except zeros since we are persisting the document brand new.
-						else
 							self.class.log_opts(query,update,options,"create")
 						
 							persisted_doc = collection.find_one_and_update(query,update,options)
@@ -214,7 +211,7 @@ module MongoidVersionedAtomic
 							
 								self.class.after_persist(persisted_doc,self)
 							end	
-						end
+						
 
 						
 					end
@@ -280,7 +277,7 @@ module MongoidVersionedAtomic
 						end
 					end
 
-					options,update,query = self.class.before_persist(options,update,curr_doc,self,query)
+					options,update = self.class.before_persist(options,update)
 					
 
 					self.class.log_opts(query,update,options,"update")
