@@ -36,7 +36,7 @@ module MongoidVersionedAtomic
 	    	##@param options[Hash] -> the options hash for the find_one_and_update method
 	    	#@param update[Hash] -> the update hash for the find_one_and_update method
 	    	#@param doc_hash[Hash] -> the document as a hash
-	    	def before_persist(options,update)
+	    	def before_persist(options,update,bypass_versioning=false)
 
 
 =begin
@@ -86,11 +86,13 @@ module MongoidVersionedAtomic
 =end
 	    		options[:return_document] = :after
 
-		 		if update["$inc"].nil?
-					update["$inc"] = {
-						"version" => 1 }
-				else
-					update["$inc"]["version"] = 1
+	    		if !bypass_versioning
+			 		if update["$inc"].nil?
+						update["$inc"] = {
+							"version" => 1 }
+					else
+						update["$inc"]["version"] = 1
+					end
 				end
 
 				return options,update
@@ -238,7 +240,7 @@ module MongoidVersionedAtomic
 		# 11. store the results in variable persisted_doc, and provided that its not nil,
 		#a. set the op_success to true.
 		#b. assign all the fields from the persisted doc to the present instance (self) in the after persist method.
-		def versioned_update(dirty_fields={})
+		def versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={})
 				
 			self.send("op_success=",false)
 			query = {}
@@ -259,8 +261,9 @@ module MongoidVersionedAtomic
 
 			if curr_doc["version"] > 0
 				
-				
-				query["version"] = curr_doc["version"]
+				if !bypass_versioning
+					query["version"] = curr_doc["version"]
+				end
 				query["_id"] = curr_doc["_id"]
 				update["$set"] = {}	
 				options[:upsert] = false
@@ -274,8 +277,9 @@ module MongoidVersionedAtomic
 						end
 					end
 
-					options,update = self.class.before_persist(options,update)
-					
+					options,update = self.class.before_persist(options,update,bypass_versioning)
+						
+					update_hash = update_hash.deep_merge(optional_update_hash)
 
 					self.class.log_opts(query,update,options,"update")
 
