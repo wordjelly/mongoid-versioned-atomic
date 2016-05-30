@@ -4,6 +4,23 @@ class CoreExtTest < ActiveSupport::TestCase
 
   def setup
     User.delete_all
+  end 
+
+  def test_create_two_users
+
+    u = User.new 
+    u.name = "bhargav"
+    u.email = "t@gmail.com"
+    u.versioned_create
+
+    u1 = User.new
+    u1.name = "dog"
+    u1.email = "d@gmail.com"
+    u1.versioned_create
+
+    assert_equal 1, u.version, "the version of the first user should be one"
+    assert_equal 1, u1.version, "the version of the second user should be one"
+
   end
 
   def test_versioned_create

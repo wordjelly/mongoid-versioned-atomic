@@ -130,10 +130,14 @@ module MongoidVersionedAtomic
 		# remember that the as_document hash is frozen, so suppose you assign it to another variable and delete some key from that variable, it also gets deleted from as_document and all variables that are connected to it, it is for this reason, that while setting the  "setoninsert" we ignore the keys if they are version or op_success instead of deleting afterwards from the hash.## had a lot of trouble with this ##
 		def versioned_create(query={})
 		 		
+
 		 		self.send("op_success=",false) 		
 		 		update = {}
 		 		options = {}
-		 		
+		 		id_query = {"_id" => as_document["_id"]}
+		 		query = query.merge(id_query)
+
+
 				if version == 0
 
 					update["$setOnInsert"] = {}
