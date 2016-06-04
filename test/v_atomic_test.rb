@@ -6,6 +6,16 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_log_on_or_off
+
+    u = User.new
+    u.name = "bhargav"
+    u.email = "u@gmail.com"
+    u.versioned_create({},true)
+
+  end
+
+
   def test_query_in_create
 
     u = User.new

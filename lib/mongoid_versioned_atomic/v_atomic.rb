@@ -1,6 +1,8 @@
 module MongoidVersionedAtomic
 	module VAtomic
 
+		
+
 		extend ActiveSupport::Concern
 	 	
 	    included do
@@ -21,7 +23,7 @@ module MongoidVersionedAtomic
 	    	##if the version is provided, then it will be used in the query
 	    	##document is not validated, before hand, since there is no document to validate.
 	    	##call validate on a mongoid document before hand if you need to.
-	    	def versioned_upsert(query={},update={},upsert = true)
+	    	def versioned_upsert(query={},update={},upsert = true,log=false)
 	    		
 	    		options = {}
 
@@ -69,19 +71,24 @@ module MongoidVersionedAtomic
 			end
 
 			##logs
-			def log_opts(query,update,options,create_or_update)
+			def log_opts(query,update,options,create_or_update,log)
 
-				puts "doing-------------------- #{create_or_update}"
+				if log
+
+					puts "doing-------------------- #{create_or_update}"
 
 
-				puts "the query is :"
-				puts JSON.pretty_generate(query)
+					puts "the query is :"
+					puts JSON.pretty_generate(query)
 
-				puts "the update is"
-				puts JSON.pretty_generate(update)
+					puts "the update is"
+					puts JSON.pretty_generate(update)
 
-				puts "the options are"
-				puts JSON.pretty_generate(options)
+					puts "the options are"
+					puts JSON.pretty_generate(options)
+				
+				end
+
 			end
 
 	    end
@@ -128,7 +135,7 @@ module MongoidVersionedAtomic
 		# a) version is incremented in the $inc part of the update - specified in before update
 		# b) op_success is not to be persisted, because we dont want older persistence success/failures to interfere with present ones. So that field is never persisted.
 		# remember that the as_document hash is frozen, so suppose you assign it to another variable and delete some key from that variable, it also gets deleted from as_document and all variables that are connected to it, it is for this reason, that while setting the  "setoninsert" we ignore the keys if they are version or op_success instead of deleting afterwards from the hash.## had a lot of trouble with this ##
-		def versioned_create(query={})
+		def versioned_create(query={},log=false)
 		 		
 
 		 		self.send("op_success=",false) 		
@@ -156,7 +163,7 @@ module MongoidVersionedAtomic
 
 						options,update = self.class.before_persist(options,update)
 
-							self.class.log_opts(query,update,options,"create")
+							self.class.log_opts(query,update,options,"create",log)
 						
 							persisted_doc = collection.find_one_and_update(query,update,options)
 		
@@ -196,7 +203,7 @@ module MongoidVersionedAtomic
 		# 11. store the results in variable persisted_doc, and provided that its not nil,
 		#a. set the op_success to true.
 		#b. assign all the fields from the persisted doc to the present instance (self) in the after persist method.
-		def versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={})
+		def versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={},log=false)
 				
 			self.send("op_success=",false)
 			query = {}
@@ -239,7 +246,7 @@ module MongoidVersionedAtomic
 
 					options,update = self.class.before_persist(options,update,bypass_versioning)
 
-					self.class.log_opts(query,update,options,"update")
+					self.class.log_opts(query,update,options,"update",log)
 
 					persisted_doc = collection.find_one_and_update(query,update,options)
 
