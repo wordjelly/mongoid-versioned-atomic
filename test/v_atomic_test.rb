@@ -6,15 +6,34 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
-  def test_log_on_or_off
+  ##if the document that is searched for is found, then the setOnInsert part will not be executed, but any "inc" keys in the update hash will be.
+  ##we test that this does not happen.
+  def test_does_not_increment_version_of_all_existing_document_on_create
 
-    u = User.new
-    u.name = "bhargav"
-    u.email = "u@gmail.com"
-    u.versioned_create({},true)
+   a = User.new
+   a.name = "bhargav"
+   a.email = "u@gmail.com"
+   a.versioned_create
+
+   a2 = User.new
+   a2.name = "bb"
+   a2.email = "bb@gmail.com"
+   a2.versioned_create
+
+   ##here there will be a record with this id already found, so nothing new will be inserted.
+   ##but we assert that the versions of all the other records in the database are still maitained at one.
+   u1 = User.new
+   u1.name = "b2"
+   u1.email = "b2@gmail.com"
+   u1.versioned_create({"_id" => a.id})
+
+   assert_equal 2, User.count, "there should be only two users"
+   User.all.each do |user|
+    assert_equal 1, user.version, "the version of all docs in the database should be one."
+   end
+
 
   end
-
 
   def test_query_in_create
 

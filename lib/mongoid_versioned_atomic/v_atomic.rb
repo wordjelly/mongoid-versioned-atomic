@@ -161,7 +161,9 @@ module MongoidVersionedAtomic
 			 				end
 			 			end
 
-						options,update = self.class.before_persist(options,update)
+			 			update["$setOnInsert"]["version"] = 1
+
+						options,update = self.class.before_persist(options,update,true)
 
 							self.class.log_opts(query,update,options,"create",log)
 						

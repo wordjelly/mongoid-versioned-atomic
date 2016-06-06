@@ -30,7 +30,23 @@ end
     
 ### Create
 
-#### Create without a query
+
+
+```
+instance.versioned_create(query={},log=false)
+```
+
+The default query is empty.
+Inside the method, the id of the instance is added to the query, and the query becomes:
+
+```
+query = {"_id" => instance.id}
+```
+the method searches for an element with the id of the given instance, and if it does not exist, then the instance and all its fields are "upserted". Suppose that even one record with this id exists, no new records will be created.
+
+
+Example:
+
 ```
 d = User.new
 d.name = "rini"
@@ -39,26 +55,36 @@ d.op_success
 #=> true
 d.version
 #=> 1
-```
-#### Create with an optional query(CREATE WHERE)
-This method should be used with queries with caution, since it will overwrite a matching record with all the attributes of the current instance.
 
-Suppose you want to create a document ONLY IF there is no document with the confirmation token of the current instance.
-We can do this atomically by providing the following "$ne" query.
+```
+
+#### Create with an optional query.
+
+You can pass in a query to the create call. If you pass in a query, then it will override the internal query mechanism described above. So what you have is a situation as follows:
+
+If a document is found that matches your query, then no new documents will be inserted. On the other hand, if no documents are found matching your query , then the given instance is persisted.
+
+This can be useful for unique checks, without creating unique indexes. Suppose you only want to create a new user if there is no existing user with the current user's name. Then you should do the following:
+
+
 
 ```
 d = User.new
-d.name = "rini"
-d.confirmation_token = "test_token"
-d.versioned_create({"$ne" => {"confirmation_token" => "test_token"}})
-d.op_success
-#=> true
+d.name = "dog"
+d.versioned_create({"name" => "dog"})
 d.version
 #=> 1
+d1 = User.new
+d1.name = "doggus"
+##the query will check whether there is any record with the name of "dog" and in that case it will execute the update on that record, but since we have specified the update hash(internal to the method) only using "setOnInsert" no new records are inserted.
+d1.versioned_create({"name" => "dog"})
+d1.op_success
+#=> false
+d1.version
+#=> 0
 ```
 
-Use this method when you receive a call to your app's create method.
-It will fail if the version of the document is not 0.
+
 
 ### Update
 
