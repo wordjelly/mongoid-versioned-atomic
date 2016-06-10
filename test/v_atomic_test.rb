@@ -6,6 +6,86 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_versioned_upsert_one_increments_version_if_doc_found_but_doesnt_affect_other_docs
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bhargav.r.raut@gmail.com"
+    a1.versioned_create
+
+    a2 = User.new
+    a2.name = "aditya"
+    a2.email = "aditya@gmail.com"
+    a2.versioned_create
+
+    User.versioned_upsert_one({"_id" => a1.id},{"$set" => {"name" => "roxanne"}})
+
+    a1_from_db = User.find(a1.id)
+    a2_from_db = User.find(a2.id)
+
+    assert_equal 2, a1_from_db.version , "the document version should be 2"
+    assert_equal "roxanne", a1_from_db.name, "the name should have been updated"
+    assert_equal 1, a2_from_db.version, "the other documents should not have been affected"
+    assert_equal "aditya",a2_from_db.name, "the name of the other document should be the same as before."
+
+  end
+
+  def test_versioned_upsert_one_increments_version_if_doc_created
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bh@gmail.com"
+    set_hash = {}
+    a1.as_document.keys.each do |k|
+      if k!= "version" 
+        set_hash[k] = a1.as_document[k]
+      end
+    end
+    User.versioned_upsert_one({"_id" => a1.id},{"$set" => set_hash})
+
+    persisted_doc = User.find(a1.id)
+    assert_equal 1, persisted_doc.version, "the persisted document version should be one."
+
+
+  end
+
+
+  def test_bypass_versioning_gives_op_success_in_versioned_update
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bh@gmail.com"
+    a1.versioned_create
+
+    a1 = User.find(a1.id)
+    a1.name = "updated name"
+    a1.versioned_update({},true,{},false)
+
+    updated_doc = User.find(a1.id)
+    assert_equal 1, updated_doc.version , "the persisted document version should be one, since we bypassed versioning."
+    assert_equal "updated name", updated_doc.name, "the persisted document name should be the updated name"
+    assert_equal true, a1.op_success, "the operation should still be successfull"
+
+  end
+
+  def test_versioned_upsert_one_does_not_affect_all_docs_if_query_is_empty
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bhargav.r.raut@gmail.com"
+    a1.versioned_create
+
+    persisted_document = User.find(a1.id)
+
+    a = User.versioned_upsert_one({},{"$set" => {"name" => "dog"}})
+    
+    assert_equal 1, User.count, "number of documents should not change"
+    assert_equal 1, persisted_document.version, "the version of the only existing document should be 1"
+    assert_equal "bhargav", persisted_document.name, "the name of the persisted document should be the same"
+
+  end
+
+
   ##if the document that is searched for is found, then the setOnInsert part will not be executed, but any "inc" keys in the update hash will be.
   ##we test that this does not happen.
   def test_does_not_increment_version_of_all_existing_document_on_create
@@ -175,14 +255,14 @@ class CoreExtTest < ActiveSupport::TestCase
 
 
 
-  def test_versioned_upsert
+  def test_versioned_upsert_one
     u = User.new
     u.name = "bhargav"
     u.email = "bhargav.r.raut@gmail.com"
     u.versioned_create
 
     ##update
-    updated_doc = User.versioned_upsert({"_id" => u.id,"version" => u.version},{"$set" => {"email" => "b.raut@gmail.com"}})
+    updated_doc = User.versioned_upsert_one({"_id" => u.id,"version" => u.version},{"$set" => {"email" => "b.raut@gmail.com"}})
     u = User.find(u.id)
     assert_equal updated_doc["email"], "b.raut@gmail.com","it should return the updated document"
     assert_equal u.email, "b.raut@gmail.com","the mongoid document should be updated"
@@ -240,7 +320,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
     ##now we send an update, but before that we already update it using upsert.
     ##so that we get a version conflict.
-    User.versioned_upsert({"_id" => a.id, "version" => a.version},{"$set" => {"email" => "kkk@gmail.com"}},false)
+    User.versioned_upsert_one({"_id" => a.id, "version" => a.version},{"$set" => {"email" => "kkk@gmail.com"}},false)
 
     a.name = "changed_name"
     a.versioned_update

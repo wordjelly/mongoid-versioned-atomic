@@ -1,8 +1,6 @@
 module MongoidVersionedAtomic
 	module VAtomic
 
-		
-
 		extend ActiveSupport::Concern
 	 	
 	    included do
@@ -18,20 +16,34 @@ module MongoidVersionedAtomic
 	    module ClassMethods
 
 
-	    	##optionally provide upsert value.
-	    	##if the version is nil, then version is not used in the query, and upsert will be set to true, the update will execute as long as a document matches the query, or if a document does not match then a new document will be created.
-	    	##if the version is provided, then it will be used in the query
-	    	##document is not validated, before hand, since there is no document to validate.
-	    	##call validate on a mongoid document before hand if you need to.
-	    	def versioned_upsert(query={},update={},upsert = true,log=false)
+	    	##@param query[Hash] -> query hash, defaults to empty hash.
+	    	##@param update[Hash] -> update hash, will contain the version increment if bypass_versioning is false(which is the default)
+	    	##@param upsert[Boolean] -> defaults to true
+	    	##@param log[Boolean] -> defaults to false, if set to true, will print the entire query to the console, before executing it.
+	    	##@param bypass_versioning[Boolean] -> defaults to false, if true, then versioning will be bypassed.
+
+	    	##@behaviour : 
+	    	##will only AFFECT ONE DOCUMENT.
+	    	##if the query is empty, then versioning is bypassed, because otherwise, this will lead to an increment of all the documents in the collection.
+	    	##basically will find the document specified in the query and if it is not found, then will create a new document with the provided options.
+	    	##if it is found, then applies the update hash to found document.
+	    	##the update hash should specify a setOnInsert -> in case it is expected that the query may not find any document.
+	    	##the version increment is applied to any document that is found, and updated.
+	    	def versioned_upsert_one(query={},update={},upsert = true,log=false,bypass_versioning=false)
 	    		
 	    		options = {}
 
-	    		options,update = before_persist(options,update)
+	    		if query.empty?
+	    			bypass_versioning = true
+	    		end
+
+	    		options,update = before_persist(options,update,bypass_versioning)
 	    		
 				options[:upsert] = upsert
 				
-	    		collection.find_one_and_update(query,update,options)
+				if !update.empty?
+					collection.find_one_and_update(query,update,options)
+				end
 
 	    	end
 
@@ -255,8 +267,12 @@ module MongoidVersionedAtomic
 					if (persisted_doc.nil?)
 						self.send("op_success=",false)
 					else
-						if persisted_doc["version"] == expected_version
+						if bypass_versioning
 							self.send("op_success=",true)
+						else
+							if persisted_doc["version"] == expected_version
+								self.send("op_success=",true)
+							end
 						end
 						
 						self.class.after_persist(persisted_doc,self)
