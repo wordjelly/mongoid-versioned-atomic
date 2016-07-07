@@ -129,6 +129,8 @@ It differs from versioned_create where you can specify a query which only exclud
 It differs from versioned_update because here you can provide an optional query, whereas in the former, the query is only the id of the instance and its version.
 
 This method performs the following checks:
+
+
 1. If the query is empty, it will automatically set the bypass_versioning to true, because otherwise it results in an increment of the version of all documents in the collection.
 
 2. If the update is empty, no operation is performed.
