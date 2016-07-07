@@ -92,8 +92,11 @@ This method accepts four arguments:
 
 
 1.dirty_fields : keys should be names of those fields which are to be updated, defaults to empty, in which case all fields except "id" and "verion" will be added to the "$set" in the update hash.
+
 2.bypass_versioninig : if true, then the version check is not performed while doing the update, and neither is the version incremented.
+
 3.optional_update_hash : this hash can be provided if you want to specify your own update settings, it will override the default "$set" that includes all fields on the instance by default.
+
 4.log : whether you want the method to print out the final command to mongodb. defaults to false.
 
 The query in this case is just the document id , and the document version, both of which are taken from the instance itself. If the document is found, then the update hash is applied to it.
@@ -117,22 +120,19 @@ d.version
 
 
 ### Atomic Query and Update.
-This is a class method. So it will not run callbacks, validations etc.
-It sets upsert by default to true.
-If the required record is not found, a new one will be created, if found, then the said record will be updated with the 
-conditions in the update hash.
-The third parameter can be set to true/false to decide whether upsert should be true or false.
 ```
-User.versioned_upsert(
-{"confirmation_token" => "abcd"},
-{"$set" => {"name" => "already_exists"},
- "$setOnInsert" => {"name" => "new_name"}
-},
-true
-)
+klass.versioned_upsert_one(query={},update={},upsert = true,log=false,bypass_versioning=false)
 ```
-This method allows you to decide what gets set if the record is new, or already exists.
-Since you can provide a update hash.
+
+This method allows you to specify a query and and update hash.
+It differs from versioned_create where you can specify a query which only excludes documents, while you cannot specify any update part, because the whole document is persisted.
+It differs from versioned_update because here you can provide an optional query, whereas in the former, the query is only the id of the instance and its version.
+
+This method performs the following checks:
+1. If the query is empty, it will automatically set the bypass_versioning to true, because otherwise it results in an increment of the version of all documents in the collection.
+2. If the update is empty, no operation is performed.
+3. Upsert is true by default.
+
 
 
   
