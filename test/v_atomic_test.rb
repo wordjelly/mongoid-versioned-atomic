@@ -6,6 +6,21 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_versioned_upsert_one_returns_a_mongoid_document
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bhargav.r.raut@gmail.com"
+    a1.versioned_create
+
+    ret = User.versioned_upsert_one({"_id" => a1.id},{"$set" => {"name" => "roxanne"}},User)
+
+    
+
+    assert_equal true, (ret.methods.include? :attributes), "it should return a mongoid document"
+
+  end
+
   def test_versioned_upsert_one_increments_version_if_doc_found_but_doesnt_affect_other_docs
 
     a1 = User.new
@@ -18,7 +33,7 @@ class CoreExtTest < ActiveSupport::TestCase
     a2.email = "aditya@gmail.com"
     a2.versioned_create
 
-    User.versioned_upsert_one({"_id" => a1.id},{"$set" => {"name" => "roxanne"}})
+    User.versioned_upsert_one({"_id" => a1.id},{"$set" => {"name" => "roxanne"}},User)
 
     a1_from_db = User.find(a1.id)
     a2_from_db = User.find(a2.id)
@@ -41,7 +56,7 @@ class CoreExtTest < ActiveSupport::TestCase
         set_hash[k] = a1.as_document[k]
       end
     end
-    User.versioned_upsert_one({"_id" => a1.id},{"$set" => set_hash})
+    User.versioned_upsert_one({"_id" => a1.id},{"$set" => set_hash},User)
 
     persisted_doc = User.find(a1.id)
     assert_equal 1, persisted_doc.version, "the persisted document version should be one."
@@ -77,7 +92,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
     persisted_document = User.find(a1.id)
 
-    a = User.versioned_upsert_one({},{"$set" => {"name" => "dog"}})
+    a = User.versioned_upsert_one({},{"$set" => {"name" => "dog"}},User)
     
     assert_equal 1, User.count, "number of documents should not change"
     assert_equal 1, persisted_document.version, "the version of the only existing document should be 1"
@@ -262,7 +277,7 @@ class CoreExtTest < ActiveSupport::TestCase
     u.versioned_create
 
     ##update
-    updated_doc = User.versioned_upsert_one({"_id" => u.id,"version" => u.version},{"$set" => {"email" => "b.raut@gmail.com"}})
+    updated_doc = User.versioned_upsert_one({"_id" => u.id,"version" => u.version},{"$set" => {"email" => "b.raut@gmail.com"}},User)
     u = User.find(u.id)
     assert_equal updated_doc["email"], "b.raut@gmail.com","it should return the updated document"
     assert_equal u.email, "b.raut@gmail.com","the mongoid document should be updated"
@@ -320,7 +335,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
     ##now we send an update, but before that we already update it using upsert.
     ##so that we get a version conflict.
-    User.versioned_upsert_one({"_id" => a.id, "version" => a.version},{"$set" => {"email" => "kkk@gmail.com"}},false)
+    User.versioned_upsert_one({"_id" => a.id, "version" => a.version},{"$set" => {"email" => "kkk@gmail.com"}},User,false)
 
     a.name = "changed_name"
     a.versioned_update

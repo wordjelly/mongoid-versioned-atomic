@@ -15,21 +15,46 @@ module MongoidVersionedAtomic
 
 	    module ClassMethods
 
+	    	##@param bson_doc[BSON Document] : a bson_document instance
+	    	##@param klass[klass] : klass of the target document.
+	    	##converts a bson_doc to the target klass instance.
+	    	##return [Object] : either the document in the target class or nil.
+	    	def bson_to_mongoid(bson_doc,klass)
+
+			 	if !bson_doc.nil?
+
+			 		t = Mongoid::Factory.from_db(klass,bson_doc)
+			 		return t
+
+			 	else
+
+			 		return nil
+
+			 	end
+
+		 	end
 
 	    	##@param query[Hash] -> query hash, defaults to empty hash.
-	    	##@param update[Hash] -> update hash, will contain the version increment if bypass_versioning is false(which is the default)
+	    	
+	    	##@param update[Hash] -> update hash.
+	    	
 	    	##@param upsert[Boolean] -> defaults to true
+	    	
 	    	##@param log[Boolean] -> defaults to false, if set to true, will print the entire query to the console, before executing it.
+
 	    	##@param bypass_versioning[Boolean] -> defaults to false, if true, then versioning will be bypassed.
 
-	    	##@behaviour : 
+	    	##@param klass : the class of the document to be modified.
+
+	    	##@logic : 
 	    	##will only AFFECT ONE DOCUMENT.
 	    	##if the query is empty, then versioning is bypassed, because otherwise, this will lead to an increment of all the documents in the collection.
 	    	##basically will find the document specified in the query and if it is not found, then will create a new document with the provided options.
 	    	##if it is found, then applies the update hash to found document.
-	    	##the update hash should specify a setOnInsert -> in case it is expected that the query may not find any document.
 	    	##the version increment is applied to any document that is found, and updated.
-	    	def versioned_upsert_one(query={},update={},upsert = true,log=false,bypass_versioning=false)
+
+	    	##@return mongoid document instance or nil(if the update hash was empty). You need to check the document to see whether it has the changes you requested.
+	    	def versioned_upsert_one(query={},update={},klass=nil,upsert=true,log=false,bypass_versioning=false)
 	    		
 	    		options = {}
 
@@ -42,14 +67,20 @@ module MongoidVersionedAtomic
 				options[:upsert] = upsert
 				
 				if !update.empty?
-					collection.find_one_and_update(query,update,options)
+					return bson_to_mongoid(collection.find_one_and_update(query,update,options),klass)
 				end
+
+				return nil
 
 	    	end
 
-	    	##@param options[Hash] -> the options hash for the find_one_and_update method
-	    	#@param update[Hash] -> the update hash for the find_one_and_update method
-	    	#@param doc_hash[Hash] -> the document as a hash
+	    	## @param options[Hash] : this is passed in from the calling method. Before_persist simply adds the return_document[:after] to it, so that the operation returns the changed document.
+
+	    	## @param update[Hash] : this is the update hash that is going to be sent to mongodb, it is also passed in from the calling method.
+
+	    	## If bypass versioning is false(default), then the update inc is set. If there is no "$inc" already in the update hash then we create a new entry for it, otherwise we simply set "version" to be incremented by one.
+
+	    	## @return [Array] : returns the options, and update.
 	    	def before_persist(options,update,bypass_versioning=false)
 
 	    		options[:return_document] = :after
@@ -67,8 +98,15 @@ module MongoidVersionedAtomic
 
 	    	end
 
-	    	##given a document, it will update all the changed attributes on self,
-			##then returns nothing.
+	    	##@param doc[Mongodb document] : this is the 'new' document that is got after applying operations on an instance.
+
+	    	##@param instance[Mongodb document] : this is the old document, i.e the instance on which the operation was applied.
+
+	    	##checks each field on the new document
+	    	##if it is version, then sets that on the instance.
+	    	##if it is any other field, then sets it on the instance if the field is not the same.
+
+	    	##return [Boolean] : always returns true.
 			def after_persist(doc,instance)
 					doc.keys.each do |f|
 						if f == "version"
@@ -107,7 +145,7 @@ module MongoidVersionedAtomic
 
 	    # removes "version" and "op_success" fields from the document before save or update, this ensures that these fields can only be persisted by the versioned_create and versioned_update methods.
 	    # prevents inadvertent persistence of these fields.
-	    #return[nil]
+	    #return attributes[Hash] : the document as a set of key-value fields.
 	    def filter_fields
 	    
 	    	remove_attribute(:version)
@@ -118,35 +156,29 @@ module MongoidVersionedAtomic
 	    end
 
 
-		# creates the document, uses the query parameters provided. Increments the version of the document to 1 on successfull creation. Sets "op_success" to true on successfull creation , otherwise false.
+		## @param query[Hash] : optional query hash.
+		## @param log[Boolean] : defaults to false, set true if you want to print out the final command sent to mongo.
 
-		# @param query[Hash](Optional) : queries can be provided based on the syntax in the mongodb ruby driver api.
-		
-		# @return true : will return true irrespective of whether the document was created or not.
-		
-		# @example : in order to check the creation, call [doc.op_success] and if true, then the creation was successfull.
-		
-		# @logic : 
-		# 1. set the op_success to false
-		# 2. if the version is 0(default version for a new record), then proceed
-		# 3. set the upsert to true, and set the "setonINsert" to an empty hash
-		# 4. start the prepare_insert block, this method is defined in the mongoid creatable module
-		# 5. call as_document - a mongoid method that returns all the attributes on the document, and then for each of its keys, provided that they are not version or op_success, set them on the previously defined setoninsert part of the update hash.
-		# 6.call before persist, this adds the increment aspect to the update hash, and also defines the return_document after parameter.
-		# 7.call the collection method find_one_and_update from the ruby driver, and store the result in a variable called persisted doc
-		# 8. the doc may be nil if the operation failed, in that case, do nothing.
-		# 9. if the persisted doc is not nil, check whether its version is more than the current version and if yes, then set op_success to true.
-		# 10. finally call after persist. this basically sets all the attributes from the persisted document onto the present document instance.
+		## @logic:
 
-		# @note:
-		# the op_success is set to false on starting the method , so that in any situation of not being successfull it returns false.
-		# the upsert is true, since this is a create call, and if the query conditions yield nothing, the document WILL BE CREATED BY DEFAULT.
-		# the query is optional, if not provided, the query is blank, and the present document will be created, since upsert is true.
-		# setOnInsert is used, since this is the only way to set the _id while creating a new record. $set does not allow to set the id.
-		# document keys "version" and "op_success" are not set in setoninsert, because 
-		# a) version is incremented in the $inc part of the update - specified in before update
-		# b) op_success is not to be persisted, because we dont want older persistence success/failures to interfere with present ones. So that field is never persisted.
-		# remember that the as_document hash is frozen, so suppose you assign it to another variable and delete some key from that variable, it also gets deleted from as_document and all variables that are connected to it, it is for this reason, that while setting the  "setoninsert" we ignore the keys if they are version or op_success instead of deleting afterwards from the hash.## had a lot of trouble with this ##
+		## begin the method by setting op_success to false, so that it can be true only if everything works out perfectly.
+
+		## the query defaults to the id of the present instance, or the optional query hash if one is provided.
+
+		## checks that the current version is 0 , otherwise does nothing, this ensures that we only persist new documents.
+
+		## update only sets via "setonInsert". By default, the document is persisted only if 
+		## a. its id does not exist in the collection
+		## OR
+		## b. the parameters supplied in the optional query hash do not find a document in the collection. 
+
+		## 'version' and 'op_success' are not added to the setOnInsert. Version is set in the #before_persist method, and op_success is set after the call to mongo.
+
+		## expected_version is the version we expect to see in the new doucment after applying the operation, provided that the operation actually persists a document.
+
+		## op_success becomes true only if a document is returned after the operation is executed and the version is 1.
+
+		## after_persist sets the fields in the persisted document on the instance.
 		def versioned_create(query={},log=false)
 		 		
 
@@ -200,23 +232,34 @@ module MongoidVersionedAtomic
 						
 		end
 
-		#@param dirty_fields[Hash] - a hash where the keys should be the name of the fields that need to be updated, values should be nil, they are assigned by the method.
-		#@return [Boolean] always returns true.
-		#@logic ;
-		#
-		# 1. assigns op_success to false at the beginning, so that it will be true only if the method passess successfully.
-		# 2. curr_doc - a variable to hold the result of the as_document function. this helps so that as_document doesn't need to be called again and again.
-		# 3. if the dirty fields are empty, we equate it to curr_doc. i.e all the fields of the document are taken up for updating.
-		# 4. if the dirty fields are not empty, each dirty field is assigned its value from the curr_doc.
-		# 5. check that the curr_doc version si greater than zero. - this is essential to ensure that we only update an existing document.
-		# 6. build the query - two thigns are essential here - basically it is an "and" query using _id and version both.
-		# 7. set upsert to false - if a document with this version and query is not found, then no persistence is done.
-		# 8. now inside the prepare_update block, provided that the field is not "_id" or "version" or "op_success" we add it to the "$set" hash of the update hash. this is because we don't want to set version because it is included in the "$inc" part of the update, and we don't want to set op_success, because this is never persisted, it is just available within the scope of the individual method call(i.e set to false before the method executes and then to to true if successfull or remains false.)
-		# 9.call #before_persist so that the "$inc" part is set on the update and return_document is set to after
-		# 10. call the collection method find_one_and_update with the query,update and options.
-		# 11. store the results in variable persisted_doc, and provided that its not nil,
-		#a. set the op_success to true.
-		#b. assign all the fields from the persisted doc to the present instance (self) in the after persist method.
+		## @param dirty_fields[Hash] : an optional hash, whose keys should be the names of the fields that have changed i.e should be updated, defaults to empty, which results in all the fields of the document being updated.
+
+		## @param bypass_versioning[Boolean] : whether the version check should be bypassed. Defaults to false. Default condition is that the updated query should have both, the document id + the document version. And the update hash should increment the document version. If the bypass_versioning flag is set to true, then document_version is not considered in the query and it is not incremented in the update hash.
+
+		## @param optional_update_hash[Hash] : an optional hash, that defaults to being empty. If provided it is used as the update hash in the final command sent to mongo. If not provided, it remains empty, and all those fields which are considered dirty are assigned to the "$set" in the update hash. The "$inc" part for versioning is not affected whether this hash is provided or not, since it is set in the before_persist. 
+
+		##@param log[Boolean] : defaults to false, if set to true will print out the final command sent to mongo.
+
+		##@logic:
+
+		##set op_success to false at the beginning.
+
+		##if dirty fields is empty, then it becomes the document as a hash of key_values.
+
+		##if it has something in it, then set the values of the dirty fields keys to whatever is the value of the respective field in the document.
+
+		##proceed only if the doc_version is greater than 0
+
+		##all fields to be persisted are put into the "$set" part of the update, and upsert is set to false.
+
+		##after the call to mongo, provided that the persisted_document is not nil, two possibilities.
+
+		##if bypass versioning is true, then op is successfull since we dont look at versions.
+
+		##if false, then op is successfull only if version == expected version.
+
+		##finally call after_persist to set all the changed fields on the document.
+		##this becomes relevant especially in case where you pass in an optional update hash with an "$inc" for some field. The incremented value is not there on the instance, since the instance has the older value and this must be set if the op is successfull on the instance.
 		def versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={},log=false)
 				
 			self.send("op_success=",false)
