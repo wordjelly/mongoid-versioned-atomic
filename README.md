@@ -1,11 +1,5 @@
 # MongoidVersionedAtomic
 
-## What this gem does
-    This gem extends mongoid with three ATOMIC methods: 
-a. versioned_create : creates a document instance, optionally accepts a query, incrementing the document version on create.
-b. versioned_update : updates all fields on a document instance, incrementing the document version on success.
-c. versioned_upsert : given a query and and update hash, increments the document version on successfull update, or creates the documetn if no document matches the query params.
-
 ## Why
 Mongoid does not provide a simple DSL to create or update documents atomically.
 Mongoid Versioning support was removed from version 4.0
@@ -23,13 +17,15 @@ class User
   include Mongoid::Document
   include MongoidVersionedAtomic::VAtomic
   
+  ##some dummy fields
+  
   field :name, type: string
   field :confirmation_token, type: string
+  field :something_else, type: xyz
 end
 ```
     
 ### Create
-
 
 
 ```
@@ -60,7 +56,7 @@ d.version
 
 #### Create with an optional query.
 
-You can pass in a query to the create call. If you pass in a query, then it will override the internal query mechanism described above. So what you have is a situation as follows:
+You can pass in a query to the create call. If you pass in a query, then it will override the internal query mechanism described above. This means that it will not check for the uniqness of the document id, however if an id gets generated that already exists, that will fail due to mongodb's inherent checks.
 
 If a document is found that matches your query, then no new documents will be inserted. On the other hand, if no documents are found matching your query , then the given instance is persisted.
 
@@ -89,6 +85,18 @@ d1.version
 ### Update
 
 ```
+instance.versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={},log=false)
+```
+
+This method accepts four arguments:
+1.dirty_fields : keys should be names of those fields which are to be updated, defaults to empty, in which case all fields except "id" and "verion" will be added to the "$set" in the update hash.
+2.bypass_versioninig : if true, then the version check is not performed while doing the update, and neither is the version incremented.
+3.optional_update_hash : this hash can be provided if you want to specify your own update settings, it will override the default "$set" that includes all fields on the instance by default.
+4.log : whether you want the method to print out the final command to mongodb. defaults to false.
+
+The query in this case is just the document id , and the document version, both of which are taken from the instance itself. If the document is found, then the update hash is applied to it.
+
+```
 d = User.new
 d.name = "test"
 d.versioned_create
@@ -105,8 +113,6 @@ d.version
 #=> 2
 ```
 
-Use this method when you receive a call to your app's update action.
-It will fail if the document version is less than 1.
 
 ### Atomic Query and Update.
 This is a class method. So it will not run callbacks, validations etc.
