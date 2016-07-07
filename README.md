@@ -89,6 +89,8 @@ instance.versioned_update(dirty_fields={},bypass_versioning=false,optional_updat
 ```
 
 This method accepts four arguments:
+
+
 1.dirty_fields : keys should be names of those fields which are to be updated, defaults to empty, in which case all fields except "id" and "verion" will be added to the "$set" in the update hash.
 2.bypass_versioninig : if true, then the version check is not performed while doing the update, and neither is the version incremented.
 3.optional_update_hash : this hash can be provided if you want to specify your own update settings, it will override the default "$set" that includes all fields on the instance by default.
