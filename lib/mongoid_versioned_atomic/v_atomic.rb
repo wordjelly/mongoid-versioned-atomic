@@ -312,7 +312,7 @@ module MongoidVersionedAtomic
 
 					if write_result.modified_count == 1
 						self.send("op_success=",true)
-						persisted_doc = self.class.to_s.constantize.find(self.id)
+						persisted_doc = self.class.to_s.constantize.find(self.to_param)
 						persisted_doc = persisted_doc.attributes
 						self.class.after_persist(persisted_doc,self)
 					else
