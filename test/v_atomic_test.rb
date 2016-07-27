@@ -6,6 +6,25 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_versioned_create_when_document_already_exists
+
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bhargav.r.raut@gmail.com"
+    a1.versioned_create
+    assert_equal true, a1.op_success, "this operation should not be successfull since nothing should be created."
+
+    a2 = User.new
+    a2.name = "bb"
+    a2.email = "bhargav.r.raut@gmail.com"
+    a2.versioned_create({"email" => a2.email})
+    assert_equal false, a2.op_success, "this operation should not be successfull since nothing should be created."
+
+
+
+  end
+
+
   def test_versioned_upsert_one_returns_a_mongoid_document
 
     a1 = User.new

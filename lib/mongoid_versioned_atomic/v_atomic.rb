@@ -182,7 +182,7 @@ module MongoidVersionedAtomic
 		def versioned_create(query={},log=false)
 		 		
 
-		 		self.send("op_success=",false) 		
+		 		self.send("op_success=",false)
 		 		update = {}
 		 		options = {}
 		 		id_query = {"_id" => as_document["_id"]}
@@ -191,42 +191,45 @@ module MongoidVersionedAtomic
 
 
 				if version == 0
-
-					update["$setOnInsert"] = {}
-		 			options[:upsert] = true
 					
-		 			expected_version = 1
-
-					prepare_insert(options) do
+						update["$setOnInsert"] = {}
+			 			options[:upsert] = true
 						
-						as_document.keys.each do |k|
-			 				if (k != "version" && k != "op_success")
-			 					update["$setOnInsert"][k] = as_document[k]
-			 				end
-			 			end
+			 			expected_version = 1
 
-			 			update["$setOnInsert"]["version"] = 1
+						prepare_insert(options) do
+							
+							as_document.keys.each do |k|
+				 				if (k != "version" && k != "op_success")
+				 					update["$setOnInsert"][k] = as_document[k]
+				 				end
+				 			end
 
-						options,update = self.class.before_persist(options,update,true)
+				 			update["$setOnInsert"]["version"] = 1
+
+							options,update = self.class.before_persist(options,update,true)
 
 							self.class.log_opts(query,update,options,"create",log)
-						
-							persisted_doc = collection.find_one_and_update(query,update,options)
-		
-							if persisted_doc.nil?
-								self.send("op_success=",false)
-							else
-								if persisted_doc["version"] == expected_version
-									self.send("op_success=",true)
-								end	
 							
-								self.class.after_persist(persisted_doc,self)
-							end	
-						
-					end
+							write_result = collection.update_one(query,update,options)
 
+
+								
+
+							if !write_result.upserted_id.nil?
+									puts "there is an upsert"
+									self.send("op_success=",true)
+									self.version = 1
+							else
+									self.send("op_success=",false)
+							end
+								
+									
+						end
 					
 				end	        
+
+				
 
 				return query,update,options  
 						
@@ -305,21 +308,15 @@ module MongoidVersionedAtomic
 
 					self.class.log_opts(query,update,options,"update",log)
 
-					persisted_doc = collection.find_one_and_update(query,update,options)
+					write_result = collection.update_one(query,update,options)
 
-					if (persisted_doc.nil?)
-						self.send("op_success=",false)
-					else
-						if bypass_versioning
-							self.send("op_success=",true)
-						else
-							if persisted_doc["version"] == expected_version
-								self.send("op_success=",true)
-							end
-						end
-						
+					if write_result.modified_count == 1
+						self.send("op_success=",true)
+						persisted_doc = self.class.to_s.constantize.find(self.id)
+						persisted_doc = persisted_doc.attributes
 						self.class.after_persist(persisted_doc,self)
-												
+					else
+						self.send("op_success=",false)
 					end
 
 				end
