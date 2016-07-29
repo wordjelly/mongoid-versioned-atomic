@@ -217,7 +217,7 @@ module MongoidVersionedAtomic
 								
 
 							if !write_result.upserted_id.nil?
-									puts "there is an upsert"
+									
 									self.send("op_success=",true)
 									self.version = 1
 							else
