@@ -6,6 +6,16 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_versioned_upsert_one_with_set_on_insert
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "bhargav.r.raut@gmail.com"
+    User.versioned_upsert_one({"_id" => a1.id},{"$setOnInsert" => {"name" => "cat"}},User)
+    a1_from_db = User.find(a1.id)
+    assert_equal 1, a1_from_db.version, "set on insert should work with version operator." 
+
+  end
+
   def test_versioned_create_when_document_already_exists
 
     a1 = User.new
@@ -75,6 +85,8 @@ class CoreExtTest < ActiveSupport::TestCase
         set_hash[k] = a1.as_document[k]
       end
     end
+    puts "set hash is:"
+    puts set_hash.to_s
     User.versioned_upsert_one({"_id" => a1.id},{"$set" => set_hash},User)
 
     persisted_doc = User.find(a1.id)
@@ -364,7 +376,16 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_equal false, a.op_success, "the op should have failed"
 
   end
-
+=begin
+  THESE THREE TESTS HAVE BEEN COMMENTED OUT BECAUSE WE HAVE BLOCKED OUT THE BEFORE_ACTION THAT USED TO PREVIOUSLY FILTER OUT THE VERSION AND OP_SUCCESS FIELDS IF THEY HAD BEEN SET, BUT WE DONT DO THAT ANYMORE, BECAUSE IT LED TO UNPREDICTABLE BEHAVIOUR WHERE FOR EG:
+  - FIRST A MODEL IS SAVED USED VERSIONED_CREATE
+  - THAT GIVES IT A VERSION
+  - THEN YOU MAKE SOME CHANGES ON THAT MODEL AND CALL CONVENTIONAL SAVE ON IT
+  - THIS WILL WIPE OUT THE VERSION
+  - THEN SUPPOSE YOU AGAIN WANT TO CALL A VERSIONED_CREATE/UPDATE/UPSERT ON THE SAME RECORD
+  - IT DOES NOT WORK BECAUSE NOW VERSION TAKES ITS DEFAULT VALUE OF ZERO.
+  - TO AVOID THIS PROBLEM, THIS FILTER IS NO LONGER USED, AND HENCE THESE TESTS ARE REDUNDANT.
+  - The filter has been commented out in the module.
   def test_version_and_op_success_not_persisted_on_calling_save
 
     a = User.new
@@ -414,7 +435,7 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_equal r.email, "bharg@gmail.com"
 
   end
-
+=end
   def test_image_versioned_create
 
     a = User.new
@@ -423,8 +444,26 @@ class CoreExtTest < ActiveSupport::TestCase
     a.email = "test@gmail.com"
     
     a.versioned_create
+    assert_not_nil a.image 
 
   end
+
+  def test_image_versioned_update
+
+    a = User.new
+    a.image = File.new("/home/bhargav/Github/mongoid_versioned_atomic/test/dummy/app/assets/images/facebook.png")
+    a.name = "bhargav"
+    a.email = "vitesse@gmail.com"
+    a.versioned_create
+
+    a.image = File.new("/home/bhargav/Github/mongoid_versioned_atomic/test/dummy/app/assets/images/keratoscope.jpg")
+    a.versioned_update({"image" => 1})
+    puts "these are the attributes after calling the update."
+    puts a.attributes.to_s
+    assert_not_nil a.image
+  
+  end
+
 
   def test_bypass_versioning_on_update
 

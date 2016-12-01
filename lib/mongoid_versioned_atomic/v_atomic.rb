@@ -6,7 +6,7 @@ module MongoidVersionedAtomic
 	    included do
 	    	field :version, type: Integer, default: 0
 	    	field :op_success, type: Boolean
-	    	before_save :filter_fields
+	    	#before_save :filter_fields
 	    end
 
 	    def self.included(base)
@@ -20,9 +20,8 @@ module MongoidVersionedAtomic
 	    	##converts a bson_doc to the target klass instance.
 	    	##return [Object] : either the document in the target class or nil.
 	    	def bson_to_mongoid(bson_doc,klass)
-
 			 	if !bson_doc.nil?
-
+			 		
 			 		t = Mongoid::Factory.from_db(klass,bson_doc)
 			 		return t
 
@@ -55,7 +54,7 @@ module MongoidVersionedAtomic
 
 	    	##@return mongoid document instance or nil(if the update hash was empty). You need to check the document to see whether it has the changes you requested.
 	    	def versioned_upsert_one(query={},update={},klass=nil,upsert=true,log=false,bypass_versioning=false)
-	    		
+	    	
 	    		options = {}
 
 	    		if query.empty?
@@ -67,6 +66,7 @@ module MongoidVersionedAtomic
 				options[:upsert] = upsert
 				
 				if !update.empty?
+
 					return bson_to_mongoid(collection.find_one_and_update(query,update,options),klass)
 				end
 
@@ -270,13 +270,20 @@ module MongoidVersionedAtomic
 			options = {}
 			update = {}
 			curr_doc = as_document
-			
+
+			#puts "curr doc is:"
+			#puts curr_doc.to_s
+			#puts "dirty fields are:"
+			#puts dirty_fields.to_s
 			##if the dirty fields are empty, the become equal to the document represented as a hash.
 			##else, we just equate their values to the fields that have changed.
 			if dirty_fields.empty?
 				dirty_fields = curr_doc
 			else
 				dirty_fields.keys.each do |d|
+					#puts "the dirty field key is: #{d}"
+					#puts "curr_doc at that key si:"
+					#puts curr_doc[d]
 					dirty_fields[d] = curr_doc[d]
 				end
 			end
@@ -293,15 +300,14 @@ module MongoidVersionedAtomic
 				expected_version = curr_doc["version"] + 1
 
 				prepare_update(options) do
-
+					#puts "dirty fields are:"
+					#puts dirty_fields.to_s
 					dirty_fields.keys.each do |k|
 						if (k != "version" && k != "_id" && k != "op_success")
 							update["$set"][k] = dirty_fields[k]
 						end
 					end
 
-					
-						
 					update = optional_update_hash.empty? ? update : optional_update_hash
 
 					options,update = self.class.before_persist(options,update,bypass_versioning)
