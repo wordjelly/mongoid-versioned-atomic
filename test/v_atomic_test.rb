@@ -6,6 +6,16 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+  def test_cross_model_callbacks
+    t1 = Thing.new
+    t1.versioned_create
+    e = Entry.new
+    e.parent_thing_id = t1.id
+    e.save
+    t1.reload
+    assert_equal(1, t1.entries.size, "the entry id was saved to thing entries")
+  end
+
   def test_versioned_upsert_one_with_set_on_insert
     a1 = User.new
     a1.name = "bhargav"
@@ -376,6 +386,7 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_equal false, a.op_success, "the op should have failed"
 
   end
+
 =begin
   THESE THREE TESTS HAVE BEEN COMMENTED OUT BECAUSE WE HAVE BLOCKED OUT THE BEFORE_ACTION THAT USED TO PREVIOUSLY FILTER OUT THE VERSION AND OP_SUCCESS FIELDS IF THEY HAD BEEN SET, BUT WE DONT DO THAT ANYMORE, BECAUSE IT LED TO UNPREDICTABLE BEHAVIOUR WHERE FOR EG:
   - FIRST A MODEL IS SAVED USED VERSIONED_CREATE
@@ -436,6 +447,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
   end
 =end
+
   def test_image_versioned_create
 
     a = User.new

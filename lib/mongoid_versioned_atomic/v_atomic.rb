@@ -54,7 +54,7 @@ module MongoidVersionedAtomic
 
 	    	##@return mongoid document instance or nil(if the update hash was empty). You need to check the document to see whether it has the changes you requested.
 	    	def versioned_upsert_one(query={},update={},klass=nil,upsert=true,log=false,bypass_versioning=false)
-	    	
+	    		
 	    		options = {}
 
 	    		if query.empty?
@@ -64,9 +64,7 @@ module MongoidVersionedAtomic
 	    		options,update = before_persist(options,update,bypass_versioning)
 	    		
 				options[:upsert] = upsert
-				
 				if !update.empty?
-
 					return bson_to_mongoid(collection.find_one_and_update(query,update,options),klass)
 				end
 

@@ -121,7 +121,8 @@ d.version
 
 ### Atomic Query and Update.
 ```
-klass.versioned_upsert_one(query={},update={},upsert = true,log=false,bypass_versioning=false)
+klass.versioned_upsert_one(query={},update={},klass=nil,upsert=true,log=false,bypass_versioning=false)
+	    	
 ```
 
 This method allows you to specify a query and and update hash.
@@ -137,6 +138,20 @@ This method performs the following checks:
 
 3. Upsert is true by default.
 
+It returns the updated mongoid document, or nil if the update could not be completed.
 
+
+#NOTES:
+
+While searching any document by id, it should be passed as follows:
+"_id" => BSON::ObjectId
+Do not pass string ids, they result in documents not being found.
 
   
+## To run the tests
+
+Run from the root directory
+
+```
+bundle exec rake test
+```
