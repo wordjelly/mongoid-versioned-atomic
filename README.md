@@ -7,7 +7,7 @@ Mongodb does not have the concept of transactions, so optimistic concurrency con
 
 ## Setup
 
-     gem 'mongoid-versioned-atomic', :git => "git://github.com/wordjelly/mongoid-versioned-atomic.git"
+     gem 'mongoid_versioned_atomic', :git => "git://github.com/wordjelly/mongoid-versioned-atomic.git"
 
 ## Usage
 
