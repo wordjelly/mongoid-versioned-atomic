@@ -199,7 +199,7 @@ module MongoidVersionedAtomic
 							
 							as_document.keys.each do |k|
 				 				if (k != "version" && k != "op_success")
-				 					update["$setOnInsert"][k] = as_document[k]
+				 					update["$setOnInsert"][k] = self.send(k.to_sym)
 				 				end
 				 			end
 
@@ -268,25 +268,13 @@ module MongoidVersionedAtomic
 			options = {}
 			update = {}
 			curr_doc = as_document
+			
+			
 
-			#puts "curr doc is:"
-			#puts curr_doc.to_s
-			#puts "dirty fields are:"
-			#puts dirty_fields.to_s
-			##if the dirty fields are empty, the become equal to the document represented as a hash.
-			##else, we just equate their values to the fields that have changed.
-			if dirty_fields.empty?
-				dirty_fields = curr_doc
-			else
-				dirty_fields.keys.each do |d|
-					#puts "the dirty field key is: #{d}"
-					#puts "curr_doc at that key si:"
-					#puts curr_doc[d]
-					dirty_fields[d] = curr_doc[d]
-				end
-			end
-
-
+			##if the dirty fields are empty then it becomes equal to a hash whose keys are the document attributes, and whose values for each key are nil, 
+			##otherwise dirty_fields stays as it is.
+			dirty_fields = dirty_fields.empty? ? Hash[curr_doc.keys.zip([])] : dirty_fields
+		
 			if curr_doc["version"] > 0
 				
 				if !bypass_versioning
@@ -297,14 +285,16 @@ module MongoidVersionedAtomic
 				options[:upsert] = false
 				expected_version = curr_doc["version"] + 1
 
+				##what happens is that we send the update["$set"][k] to whatever was stored in the dirty_fields.
+
 				prepare_update(options) do
-					#puts "dirty fields are:"
-					#puts dirty_fields.to_s
+					
 					dirty_fields.keys.each do |k|
 						if (k != "version" && k != "_id" && k != "op_success")
-							update["$set"][k] = dirty_fields[k]
+							update["$set"][k] = self.send(k.to_sym)
 						end
 					end
+
 
 					update = optional_update_hash.empty? ? update : optional_update_hash
 

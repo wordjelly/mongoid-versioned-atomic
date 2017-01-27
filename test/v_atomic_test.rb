@@ -469,9 +469,8 @@ class CoreExtTest < ActiveSupport::TestCase
     a.versioned_create
 
     a.image = File.new("/home/bhargav/Github/mongoid_versioned_atomic/test/dummy/app/assets/images/keratoscope.jpg")
-    a.versioned_update({"image" => 1})
-    puts "these are the attributes after calling the update."
-    puts a.attributes.to_s
+
+    a.versioned_update(Hash[User.image_attributes.zip([])])
     assert_not_nil a.image
   
   end

@@ -4,6 +4,7 @@ class User
   include MongoidVersionedAtomic::VAtomic
   include Mongoid::Paperclip
   has_mongoid_attached_file :image
+  
 
 
   validates_attachment_content_type :image, :content_type => ["image/jpg", "image/jpeg", "image/png", "image/gif"]
@@ -25,6 +26,9 @@ class User
   before_update :do_before_update
   after_update :do_after_update
 
+  def self.image_attributes
+    ["image_file_name","image_fingerprint","image_content_type","image_file_size","image_updated_at"]
+  end
 
   private
 
