@@ -6,6 +6,9 @@ module MongoidVersionedAtomic
 	    included do
 	    	field :version, type: Integer, default: 0
 	    	field :op_success, type: Boolean
+	    	attr_accessor :matched_count
+	    	attr_accessor :modified_count
+	    	attr_accessor :upserted_id
 	    	#before_save :filter_fields
 	    end
 
@@ -213,14 +216,23 @@ module MongoidVersionedAtomic
 
 
 								
-
-							if !write_result.upserted_id.nil?
-									
+							self.matched_count = write_result.matched_count
+							self.modified_count = write_result.modified_count
+							self.upserted_id = write_result.upserted_id
+							##as long as it matched a document, or it inserted a document
+							if write_result.matched_count > 0 || write_result.upserted_id
 									self.send("op_success=",true)
 									self.version = 1
 							else
-									self.send("op_success=",false)
+									self.send("op_success",false)
 							end
+							#if !write_result.upserted_id.nil?
+									
+							#		self.send("op_success=",true)
+							#		self.version = 1
+							#else
+							#		self.send("op_success=",false)
+							#end
 								
 									
 						end
@@ -262,7 +274,6 @@ module MongoidVersionedAtomic
 		##finally call after_persist to set all the changed fields on the document.
 		##this becomes relevant especially in case where you pass in an optional update hash with an "$inc" for some field. The incremented value is not there on the instance, since the instance has the older value and this must be set if the op is successfull on the instance.
 		def versioned_update(dirty_fields={},bypass_versioning=false,optional_update_hash={},log=false)
-				
 			self.send("op_success=",false)
 			query = {}
 			options = {}
@@ -274,7 +285,7 @@ module MongoidVersionedAtomic
 			##if the dirty fields are empty then it becomes equal to a hash whose keys are the document attributes, and whose values for each key are nil, 
 			##otherwise dirty_fields stays as it is.
 			dirty_fields = dirty_fields.empty? ? Hash[curr_doc.keys.zip([])] : dirty_fields
-		
+			
 			if curr_doc["version"] > 0
 				
 				if !bypass_versioning
@@ -303,7 +314,7 @@ module MongoidVersionedAtomic
 					self.class.log_opts(query,update,options,"update",log)
 
 					write_result = collection.update_one(query,update,options)
-
+					
 					if write_result.modified_count == 1
 						self.send("op_success=",true)
 						persisted_doc = self.class.to_s.constantize.find(self.to_param)

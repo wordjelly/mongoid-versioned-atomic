@@ -6,6 +6,7 @@ class CoreExtTest < ActiveSupport::TestCase
     User.delete_all
   end 
 
+
   def test_cross_model_callbacks
     t1 = Thing.new
     t1.versioned_create
@@ -26,22 +27,22 @@ class CoreExtTest < ActiveSupport::TestCase
 
   end
 
+
   def test_versioned_create_when_document_already_exists
 
     a1 = User.new
     a1.name = "bhargav"
     a1.email = "bhargav.r.raut@gmail.com"
     a1.versioned_create
-    assert_equal true, a1.op_success, "this operation should not be successfull since nothing should be created."
+    assert_equal true, a1.op_success, "this op should succeed."
 
     a2 = User.new
     a2.name = "bb"
     a2.email = "bhargav.r.raut@gmail.com"
     a2.versioned_create({"email" => a2.email})
-    assert_equal false, a2.op_success, "this operation should not be successfull since nothing should be created."
-
-
-
+    assert_equal true, a2.op_success, "this op should also succeed"
+    assert_nil a2.upserted_id,"no new doc should be upserted"
+    assert_equal 1, a2.matched_count, "it should match an existing doc"
   end
 
 
@@ -229,6 +230,30 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_equal "bhargav", u.name, "(db)the name should have been persisted"
     assert_equal "raut@gmail.com",u.email, "(db)the email should have been persisted"
         
+  end
+
+  def test_versioned_create_should_return_doc_counts
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "rrphotosoft@gmail.com"
+    a1.versioned_create
+    assert_equal 0,a1.matched_count,"should not have any matched documents"
+    assert_not_nil(a1.upserted_id,"there should be an upserted id")
+  end
+
+  def test_versioned_create_should_return_matched_count_as_one_if_doc_exists
+    a1 = User.new
+    a1.name = "bhargav"
+    a1.email = "rrphotosoft@gmail.com"
+    a1.versioned_create
+    
+    a2 = User.new
+    a2.name = "bhargav"
+    a2.email = "rrphotosoft@gmail.com"
+    a2.versioned_create({"email" => "rrphotosoft@gmail.com"})
+    assert_equal 1,a2.matched_count,"the matched count should be one."
+    assert_equal 0,a2.modified_count, "the modified count should be zero"
+    assert_nil a2.upserted_id,"the upserted id should be nil"
   end
 
 
