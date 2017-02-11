@@ -32,6 +32,10 @@ end
 instance.versioned_create(query={},log=false)
 ```
 
+Three attributes(not fields) are set on the returned document
+They are taken from the WriteResult(http://www.rubydoc.info/gems/mongo/Mongo/Operation/Write/Update/Result)
+matched_count, modified_count, upserted_id
+
 The default query is empty.
 Inside the method, the id of the instance is added to the query, and the query becomes:
 
@@ -75,9 +79,13 @@ d1.name = "doggus"
 ##the query will check whether there is any record with the name of "dog" and in that case it will execute the update on that record, but since we have specified the update hash(internal to the method) only using "setOnInsert" no new records are inserted.
 d1.versioned_create({"name" => "dog"})
 d1.op_success
-#=> false
+#=> true
 d1.version
 #=> 0
+d1.matched_count
+#=> 1
+d1.upserted_id
+#=> nil
 ```
 
 
