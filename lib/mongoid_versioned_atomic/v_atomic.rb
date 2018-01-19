@@ -1,4 +1,8 @@
 module MongoidVersionedAtomic
+	
+	class DbUnchanged < StandardError
+	end
+
 	module VAtomic
 
 		extend ActiveSupport::Concern
@@ -10,6 +14,9 @@ module MongoidVersionedAtomic
 	    	attr_accessor :modified_count
 	    	attr_accessor :upserted_id
 	    	#before_save :filter_fields
+	    	after_create :check_upserted_id
+	    	after_update :check_modified_count
+
 	    end
 
 	    def self.included(base)
@@ -156,6 +163,15 @@ module MongoidVersionedAtomic
 	    	
 	    end
 
+	    ## after create callback , ensures that callback chain is halted if nothing was created.
+	    def check_upserted_id
+	    	raise DbUnchanged if !self.upserted_id
+	    end
+
+	    ## after update callback ensures that callback chain is halted if nothing was modified.
+	    def check_modified_count
+	    	raise DbUnchanged if !self.modified_count == 1
+	    end
 
 		## @param query[Hash] : optional query hash.
 		## @param log[Boolean] : defaults to false, set true if you want to print out the final command sent to mongo.
@@ -198,44 +214,42 @@ module MongoidVersionedAtomic
 						
 			 			expected_version = 1
 
-						prepare_insert(options) do
-							
-							as_document.keys.each do |k|
-				 				if (k != "version" && k != "op_success")
-				 					update["$setOnInsert"][k] = self.send(k.to_sym)
-				 				end
-				 			end
-
-				 			update["$setOnInsert"]["version"] = 1
-
-							options,update = self.class.before_persist(options,update,true)
-
-							self.class.log_opts(query,update,options,"create",log)
-							
-							write_result = collection.update_one(query,update,options)
-
-
+			 			begin
+							prepare_insert(options) do
 								
-							self.matched_count = write_result.matched_count
-							self.modified_count = write_result.modified_count
-							self.upserted_id = write_result.upserted_id
-							##as long as it matched a document, or it inserted a document
-							if write_result.matched_count > 0 || write_result.upserted_id
-									self.send("op_success=",true)
-									self.version = 1
-							else
-									self.send("op_success",false)
+								as_document.keys.each do |k|
+					 				if (k != "version" && k != "op_success")
+					 					update["$setOnInsert"][k] = self.send(k.to_sym)
+					 				end
+					 			end
+
+					 			update["$setOnInsert"]["version"] = 1
+
+								options,update = self.class.before_persist(options,update,true)
+
+								self.class.log_opts(query,update,options,"create",log)
+								
+								write_result = collection.update_one(query,update,options)
+
+
+									
+								self.matched_count = write_result.matched_count
+								self.modified_count = write_result.modified_count
+								self.upserted_id = write_result.upserted_id
+								##as long as it matched a document, or it inserted a document
+								if write_result.matched_count > 0 || write_result.upserted_id
+										self.send("op_success=",true)
+										self.version = 1
+								else
+										self.send("op_success",false)
+								end
+								
+									
+										
 							end
-							#if !write_result.upserted_id.nil?
-									
-							#		self.send("op_success=",true)
-							#		self.version = 1
-							#else
-							#		self.send("op_success=",false)
-							#end
-								
-									
-						end
+						rescue DbUnchanged => error
+							#puts "caught db unchanged error, so callbacks will be halted."
+						end 
 					
 				end	        
 
@@ -297,7 +311,7 @@ module MongoidVersionedAtomic
 				expected_version = curr_doc["version"] + 1
 
 				##what happens is that we send the update["$set"][k] to whatever was stored in the dirty_fields.
-
+				begin
 				prepare_update(options) do
 					
 					dirty_fields.keys.each do |k|
@@ -325,6 +339,9 @@ module MongoidVersionedAtomic
 					end
 
 				end
+				rescue DbUnchanged => error
+					#puts "Rescued db unchanged error, so remaining after update callbacks will be halted."
+				end 
 				
 			end
 

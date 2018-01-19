@@ -37,7 +37,8 @@ class User
   end
 
   def do_after_create
-  	self.after_create_field = 1
+    
+  	self.after_create_field = 1 
   end
 
   def do_before_update

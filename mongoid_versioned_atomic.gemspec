@@ -7,7 +7,7 @@ require "mongoid_versioned_atomic/version"
 Gem::Specification.new do |s|
   s.name        = "mongoid_versioned_atomic"
   s.version     = MongoidVersionedAtomic::VERSION
-  s.authors     = ["wordjelly"]
+  s.authors     = ["greatmanta111"]
   s.email       = ["bhargav.r.raut@gmail.com"]
   s.homepage    = "http://www.github.com/wordjelly"
   s.summary     = "Adds atomic versioning support to mongoid"
