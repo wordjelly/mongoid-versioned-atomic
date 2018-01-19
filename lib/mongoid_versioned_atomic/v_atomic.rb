@@ -17,6 +17,7 @@ module MongoidVersionedAtomic
 	    	after_create :check_upserted_id
 	    	after_update :check_modified_count
 
+
 	    end
 
 	    def self.included(base)
@@ -248,7 +249,7 @@ module MongoidVersionedAtomic
 										
 							end
 						rescue DbUnchanged => error
-							#puts "caught db unchanged error, so callbacks will be halted."
+							puts "caught db unchanged error, so callbacks will be halted.-------------------------------------------------------------"
 						end 
 					
 				end	        
