@@ -174,6 +174,14 @@ module MongoidVersionedAtomic
 	    	raise DbUnchanged if !self.modified_count == 1
 	    end
 
+	    ## overrides the save method on the model.
+	    ## calls versioned_create if it is a new record
+	    ## otherwise calls versioned_update.
+	    def save(options = {})
+	    	self.new_record? ? self.versioned_create(options) : self.versioned_update(options)
+	    end
+
+
 		## @param query[Hash] : optional query hash.
 		## @param log[Boolean] : defaults to false, set true if you want to print out the final command sent to mongo.
 
