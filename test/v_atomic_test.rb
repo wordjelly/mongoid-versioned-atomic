@@ -363,23 +363,7 @@ class CoreExtTest < ActiveSupport::TestCase
 
   end
 
-  def test_af_cal
-    # create a user
-    
-    u = User.new
-    u.name = "bhargav"
-    u.email = "god@gmail.com"
-    u.versioned_create
-    puts u.op_success
-    # now try to create another user with the same email.
-    # the after callback should not pass.
-    
-    u2 = User.new
-    u2.name = "dog"
-    u2.email = "god@gmail.com"
-    u2.versioned_create({"email" => u2.email})
-    assert_equal 0, u2.after_create_field, "the after create callback should not have succeeded."
-  end
+ 
 
 
   def test_after_create_callbacks
