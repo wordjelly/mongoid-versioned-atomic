@@ -265,11 +265,11 @@ module MongoidVersionedAtomic
 								self.upserted_id = write_result.upserted_id
 								
 								##as long as it matched a document, or it inserted a document
-								if write_result.matched_count > 0 || write_result.upserted_id
+								if self.upserted_id
 										self.send("op_success=",true)
 										self.version = 1
 								else
-										self.send("op_success",false)
+										self.send("op_success=",false)
 								end
 								
 									

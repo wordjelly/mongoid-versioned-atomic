@@ -40,7 +40,7 @@ class CoreExtTest < ActiveSupport::TestCase
     a2.name = "bb"
     a2.email = "bhargav.r.raut@gmail.com"
     a2.versioned_create({"email" => a2.email})
-    assert_equal true, a2.op_success, "this op should also succeed"
+    assert_equal false, a2.op_success, "this op should not succeed"
     assert_nil a2.upserted_id,"no new doc should be upserted"
     assert_equal 1, a2.matched_count, "it should match an existing doc"
   end
@@ -200,6 +200,7 @@ class CoreExtTest < ActiveSupport::TestCase
     u.name = "bhargav"
     u.email = "t@gmail.com"
     u.versioned_create
+    
 
     u1 = User.new
     u1.name = "dog"
