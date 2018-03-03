@@ -351,6 +351,10 @@ module MongoidVersionedAtomic
 
 					options,update = self.class.before_persist(options,update,bypass_versioning)
 
+					#puts "-----------------------------------"
+					#puts "called update"
+					#puts "-----------------------------------"
+
 					self.class.log_opts(query,update,options,"update",log)
 
 					write_result = collection.update_one(query,update,options)
