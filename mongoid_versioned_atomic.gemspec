@@ -17,10 +17,10 @@ Gem::Specification.new do |s|
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.rdoc"]
   s.test_files = Dir["test/**/*"]
 
-  s.add_dependency "rake", "11.2.2"
-  s.add_dependency "rails", "~> 4.2.4"
-  s.add_dependency "mongoid", "~> 5.0.2"
-  #s.add_dependency "mongoid-paperclip"
-  s.add_dependency "aws-sdk", '~> 3'
+  s.add_dependency "rake"
+  s.add_dependency "rails"
+  s.add_dependency "mongoid"
+  s.add_dependency "mongoid-paperclip"
+  #s.add_dependency "aws-sdk"
 
 end

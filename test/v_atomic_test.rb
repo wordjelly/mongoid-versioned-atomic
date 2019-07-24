@@ -476,6 +476,7 @@ class CoreExtTest < ActiveSupport::TestCase
   end
 =end
 
+=begin
   def test_image_versioned_create
 
     a = User.new
@@ -502,7 +503,7 @@ class CoreExtTest < ActiveSupport::TestCase
     assert_not_nil a.image
   
   end
-
+=end
 
   def test_bypass_versioning_on_update
 
